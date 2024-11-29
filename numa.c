@@ -5,7 +5,7 @@
 
 #include "numa.h"
 
-unsigned cpu_on_node[MAX_CPUS];
+int cpu_on_node[MAX_CPUS];
 
 size_t get_numa_nodes_num(void) {
     struct dirent **name_list;
