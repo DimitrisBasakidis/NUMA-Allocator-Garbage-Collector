@@ -2,6 +2,7 @@
 #define NUMA_ALLOCATOR
 
 typedef struct {
+    void *starting_addr;
     size_t size;
     struct free_block *next;
 } free_block;
