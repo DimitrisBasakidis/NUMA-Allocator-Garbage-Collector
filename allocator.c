@@ -105,16 +105,40 @@ void init_allocator(size_t heap_size) {
 
 }
 
+void print_allocation_info(void *ptr, size_t size) {
+    // Get the CPU the thread is running on
+    int cpu = sched_getcpu();
+    if (cpu == -1) {
+        perror("sched_getcpu failed");
+        return;
+    }
+
+    // Determine the NUMA node for the current CPU
+    int numa_node = cpu_on_node[cpu];
+
+    // Print debug information
+    printf("Allocated memory at address: %p\n", ptr);
+    printf("Allocation size: %zu bytes\n", size);
+    printf("Thread is running on CPU: %d\n", cpu);
+    if (numa_node != -1) {
+        printf("CPU belongs to NUMA node: %d\n", numa_node);
+    } else {
+        printf("NUMA node information unavailable for CPU: %d\n", cpu);
+    }
+}
+
+
 int main() {
     parse_cpus_to_node();
     init_allocator(1024 * 1024);
+    /*
 
     for (int cpu = 0; cpu < MAX_CPUS; cpu++) {
         if (cpu_on_node[cpu] != -1) {
             printf("CPU %d belongs to NUMA node %d\n", cpu, cpu_on_node[cpu]);
         }
     }
-
+    */
 
 
 
