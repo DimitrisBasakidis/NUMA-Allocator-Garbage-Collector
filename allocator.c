@@ -177,7 +177,12 @@ void init_allocator(size_t heap_size) {
 
         while (remaining >= 16) {
             size_t block_size = determine_block_size(remaining);
-            if (block_size > remaining) break; // No more valid blocks
+	    if (block_size > remaining / 2) {
+                block_size = remaining / 2;
+                if (block_size <= 16) { // Ensure the block is at least the minimum size
+                    block_size = remaining;
+                }
+            } 
 
             free_block *new_block = (free_block *)current_addr;
             new_block->starting_addr = current_addr;
@@ -272,6 +277,10 @@ void free_allocator(void) {
 int main() {
     parse_cpus_to_node();
     init_allocator(1024 * 1024);
+
+    for (int i = 0; i < get_numa_nodes_num(); i++) {
+        print_heap(i); // Print the heap state to verify the blocks and bins
+    }
     /*
 
     print_heap(1);
