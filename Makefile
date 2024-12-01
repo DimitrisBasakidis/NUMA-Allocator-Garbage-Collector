@@ -10,7 +10,7 @@ numa.o: numa.c
 	$(CC) $(CFLAGS) -c numa.c
 
 numa_alloc: allocator.c numa.o
-	$(CC) $(DEFINES) $(CFLAGS) allocator.c numa.o -o numa_alloc -pthread
+	$(CC) $(DEFINES) $(CFLAGS) allocator.c numa.o -o numa_alloc -pthread -lm
 
 clean:
 	rm -f *.o numa_alloc
