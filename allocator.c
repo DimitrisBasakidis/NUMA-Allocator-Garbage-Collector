@@ -297,7 +297,6 @@ int main() {
 
     print_heap(1);
 
-
     print_heap(1);
     for (int cpu = 0; cpu < MAX_CPUS; cpu++) {
         if (cpu_on_node[cpu] != -1) {
