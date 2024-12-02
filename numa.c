@@ -64,18 +64,6 @@ void parse_cpus_to_node(void) {
 	    parse_cpu_list(buffer, node, cpu_on_node);
 	}
 	node++;
+	fclose(file);
     }
 }
-/*
-
-int main() {
-    parse_cpus_to_node();
-
-    for (int cpu = 0; cpu < MAX_CPUS; cpu++) {
-        if (cpu_on_node[cpu] != -1) {
-            printf("CPU %d belongs to NUMA node %d\n", cpu, cpu_on_node[cpu]);
-        }
-    }
-
-    return 0;
-}*/

@@ -90,6 +90,14 @@ void touch_memory(void *ptr, size_t size) {
     }
 }
 
+size_t get_bin_index(size_t size) {
+    for (size_t index = 0U; index < BINS; index++){
+	if (size <= (16 * pow(2, index))) return index;
+    }
+
+    return BINS;
+}
+
 void print_allocation_info(void *ptr, size_t size) {
     // Get the CPU the thread is running on
     int cpu = sched_getcpu();
@@ -128,26 +136,45 @@ void print_heap(int node) {
         printf("  Bin %zu:\n", bin);
         free_block *current = heap->free_list[bin];
         while (current) {
-            printf("    Block Address: %p, Size: %zu bytes\n", current->starting_addr, current->size);
+            printf("    Block Address: %p, Size: %zu bytes %p\n", current->starting_addr, current->size, current);
             current = (free_block *) current->next;
         }
     }
 }
 
-size_t get_bin_index(size_t size) {
-    for (size_t index = 0U; index < BINS - 1; index++){
-    	if (size <= 16 * pow(2, index)) return index;
+void initialize_free_lists(numa_heap **heap_addr) {
+    numa_heap *heap = *heap_addr;
+    size_t bin_capacity = heap->heap_size / BINS; // Divide heap into bin-sized chunks
+    size_t current_offset = 0;
+    for (size_t index = 0U; index < BINS; index++){
+	long bin_size = 16 * pow(2, index);
+        bin_capacity = heap->heap_size / BINS;
+
+    	if (index == BINS - 1) {
+            bin_capacity = heap->heap_size - current_offset;
+        }
+
+        size_t remaining = bin_capacity;
+ 
+        while (remaining >= (long unsigned int) bin_size) {
+	    free_block *new_block = (free_block *) mem_alloc(sizeof(free_block));
+            new_block->starting_addr = (free_block *)((char *)heap->start_addr + current_offset);
+            new_block->size = bin_size;
+	    new_block->next = NULL;
+
+	    if (heap->free_list[index] == NULL) { 
+	        heap->free_list[index] = new_block;
+	    } else {
+		new_block->next = (struct free_block *) heap->free_list[index];
+		heap->free_list[index] = new_block;
+	    }
+
+            current_offset += bin_size;
+            remaining -= bin_size;
+
+        }
     }
 
-    return BINS - 1;
-}
-
-size_t determine_block_size(size_t requested_size) {
-    size_t block_size = 16; // Minimum block size
-    while (block_size < requested_size) {
-        block_size *= 2;
-    }
-    return block_size;
 }
 
 void init_allocator(size_t heap_size) {
@@ -172,31 +199,7 @@ void init_allocator(size_t heap_size) {
 	   numa_heaps[i]->free_list[bin] = NULL;
 	}
 
-	void *current_addr = numa_heaps[i]->start_addr;
-        size_t remaining = heap_size;
-
-        while (remaining >= 16) {
-            size_t block_size = determine_block_size(remaining);
-	    if (block_size > remaining / 2) {
-                block_size = remaining / 2;
-                if (block_size <= 16) { // Ensure the block is at least the minimum size
-                    block_size = remaining;
-                }
-            } 
-
-            free_block *new_block = (free_block *)current_addr;
-            new_block->starting_addr = current_addr;
-            new_block->size = block_size;
-
-            size_t bin_index = get_bin_index(block_size);
-	    printf("index is %ld and block size is %ld\n", bin_index, block_size);
-            new_block->next = (struct free_block *) numa_heaps[i]->free_list[bin_index];
-            numa_heaps[i]->free_list[bin_index] = new_block;
-
-            current_addr = (char *)current_addr + block_size;
-            remaining -= block_size;
-        }	
-
+        initialize_free_lists(&numa_heaps[i]);
 	
 	if (pthread_mutex_init(&numa_heaps[i]->lock, NULL) != 0) {
             fprintf(stderr, "Failed to initialize mutex for NUMA heap %zu\n", i);
@@ -216,43 +219,41 @@ void *numa_alloc(size_t size, int node) {
 
     pthread_mutex_lock(&heap->lock);
 
-    if (heap->heap_size < size) {
-    	fprintf(stderr, "not enough memory in NUMA node %d heap\n", node); 
-	pthread_mutex_unlock(&heap->lock);
+    size_t bin_index = get_bin_index(size);
+
+    printf("index %ld\n", bin_index);
+    if (bin_index == BINS) {
+    	pthread_mutex_unlock(&heap->lock);
 	return NULL;
     }
+    free_block *ptr = heap->free_list[bin_index];
+    free_block *prev = NULL;
+
+
+    while (ptr != NULL) {
+	if (ptr->size >= size) {
+	    if (prev != NULL) prev->next = ptr->next;
+	    else heap->free_list[bin_index] = ptr->next;
+
+            pthread_mutex_unlock(&heap->lock);
+            return ptr->starting_addr;
+	}
     
-    void *allocated = heap->start_addr; // tail of free_list
-    free_block *new_block = (free_block *)mem_alloc(sizeof(free_block));
-    new_block->starting_addr = heap->start_addr;
-    new_block->size = size;
-    new_block->next = NULL;
-
-    /*
-    // this will change based on the policy
-    if (heap->free_list == NULL) heap->free_list = new_block;
-    else {
-         free_block *ptr = heap->free_list;
-	 while (ptr->next != NULL) ptr = (free_block *) ptr->next;
-	 ptr->next = (struct free_block *) new_block;
+    	prev = ptr;
+	ptr = (free_block *) ptr->next;
     }
-    */
-
-    heap->start_addr = (char *)heap->start_addr + size; // remove this line start_addr must point to the beggining of the heap 
-    heap->heap_size -= size;
 
     pthread_mutex_unlock(&heap->lock);
-    return allocated;
+    return NULL;
 }
 
 void free_allocator(void) {
     size_t nodes =  get_numa_nodes_num();
 
     for (size_t i = 0U; i < nodes; i++) {
-
 	numa_heap *heap = numa_heaps[i];
+
 	for (size_t bin = 0U; bin < BINS; bin++) {
-	
 	    free_block *ptr = heap->free_list[bin];
 	    free_block *to_free = NULL;
 
@@ -262,38 +263,40 @@ void free_allocator(void) {
 	        mem_dealloc(to_free, sizeof(free_block));
 	    }
 	}
-
 	if (heap->start_addr != NULL) mem_dealloc(heap->start_addr, heap->heap_size);
 
 	pthread_mutex_destroy(&heap->lock);
-
 	mem_dealloc(heap, sizeof(numa_heap));
     }
-    
+
     mem_dealloc(numa_heaps, nodes * sizeof(numa_heap *));
 }
 
 
 int main() {
     parse_cpus_to_node();
-    init_allocator(1024 * 1024);
+    init_allocator(1024);
+    /*
 
     for (int i = 0; i < get_numa_nodes_num(); i++) {
         print_heap(i); // Print the heap state to verify the blocks and bins
     }
+    */
+    int *ptr = numa_alloc(sizeof(int) * 10, 1);
+
+    int *ptr2 = numa_alloc(sizeof(int) , 1);
+    int *ptr3 = numa_alloc(sizeof(int) * 40, 1);
+    int *ptr4 = numa_alloc(sizeof(int) * 90, 1);
+    int *ptr5 = numa_alloc(sizeof(int) *1000, 1);
+    int *ptr6 = numa_alloc(sizeof(int) * 32, 1);
+
+    for (int i = 0; i < 2; i++) ptr2[i] = 99;
+    
+    for (int i = 0; i < 10; i++) printf("ptr[%d] = %d\n", i, ptr2[i]);
     /*
 
     print_heap(1);
-    int *ptr = numa_alloc(sizeof(int) * 10, 1);
-    int *ptr2 = numa_alloc(sizeof(int) * 10, 1);
-    int *ptr3 = numa_alloc(sizeof(int) * 10, 1);
-    int *ptr4 = numa_alloc(sizeof(int) * 10, 1);
-    int *ptr5 = numa_alloc(sizeof(int) * 10, 1);
-    int *ptr6 = numa_alloc(sizeof(int) * 10, 1);
 
-    for (int i = 0; i < 10; i++) ptr[i] = i;
-    
-    for (int i = 0; i < 10; i++) printf("ptr[%d] = %d\n", i, ptr[i]);
 
     print_heap(1);
     for (int cpu = 0; cpu < MAX_CPUS; cpu++) {
