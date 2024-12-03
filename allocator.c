@@ -355,7 +355,7 @@ int main() {
 	numa_free(ptr2, 1);
 	numa_free(ptr3, 1);
 	numa_free(ptr4, 1);
-  //  print_heap(1);
+    print_heap(1);
     /*
 
     print_heap(1);
