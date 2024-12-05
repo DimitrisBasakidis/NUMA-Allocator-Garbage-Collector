@@ -1,6 +1,9 @@
 #ifndef NUMA_ALLOCATOR
 #define NUMA_ALLOCATOR
 
+#include <stddef.h>
+#include <pthread.h>
+
 #define BINS 8
 
 typedef enum {
@@ -26,8 +29,10 @@ typedef struct {
 void init_allocator(size_t heap_size);
 void free_allocator(void);
 
-void *allocate(size_t size);
-void *deallocate(void *ptr);
+void *allocate(size_t size, int node);
+void *allocate_interleaved(size_t size);
+
+void deallocate(void *ptr);
 
 #endif
 
