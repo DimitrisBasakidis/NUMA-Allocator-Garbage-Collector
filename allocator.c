@@ -13,6 +13,7 @@
 #include "util.h"
 
 numa_heap **numa_heaps;
+static size_t current_node = 0U;
 void ***free_lists_starting_addr;
 free_block *last;
 size_t size_of_heap;
@@ -228,20 +229,30 @@ void init_allocator(size_t heap_size) {
 }
 
 
-void *allocate(size_t size, int node) {
-    assert((size_t) node < get_numa_nodes_num());
-    numa_heap *heap = numa_heaps[node];
+void *allocate_localy(size_t size) {
+    assert(size > 0);
 
+    int cpu = sched_getcpu();
+    if (cpu == -1) return NULL;
+    
+    int node = cpu_on_node[cpu];
+    if (node == -1) return NULL;
+
+    set_thread_affinity(node);
+
+    numa_heap *heap = numa_heaps[node];
     pthread_mutex_lock(&heap->lock);
 
     size_t bin_index = get_bin_index(size);
+    printf("in allocate localy the bin ibdex is %ld and size %ld\n", bin_index, size);
 
-    printf("index %ld\n", bin_index);
     if (bin_index == BINS) {
-	    // implement direcly mmap
+	void *allocated = mem_alloc(size);
+        restore_thread_affinity();
     	pthread_mutex_unlock(&heap->lock);
-	return NULL;
+	return allocated;
     }
+
     free_block *ptr = heap->free_list[bin_index];
     free_block *prev = NULL;
 
@@ -259,9 +270,23 @@ void *allocate(size_t size, int node) {
     	prev = ptr;
 	ptr = (free_block *) ptr->next;
     }
+    restore_thread_affinity();
 
     pthread_mutex_unlock(&heap->lock);
     return NULL;
+}
+
+void *allocate_interleaved(size_t size) {
+    assert(size > 0);
+
+    size_t nodes = get_numa_nodes_num();
+
+    for (size_t i = 0U; i < nodes; i++) {
+        size_t node = (current_node + i) % nodes;
+	printf("node to be allocated on %ld\n", node);
+//	numa_heap *heap = numa_heaps 
+    }
+
 }
 
 void free_allocator(void) {
@@ -293,27 +318,33 @@ void free_allocator(void) {
 void deallocate(void *ptr) {
     assert(ptr != NULL);
 
-    int node = 0;
+    int node = -1;
     for (size_t i = 0; i < get_numa_nodes_num(); i++) {
         if (ptr >= free_lists_starting_addr[i][0] && ptr < (free_lists_starting_addr[i][BINS - 1] + size_of_heap)) {
  	    node = i;	
 	    break;
 	}
     }
+
+    if (node == -1) {
+	return;
+    }
     numa_heap *heap = numa_heaps[node];
     pthread_mutex_lock(&heap->lock);
 
     size_t bin_index = -1;
-    for (size_t i = 0; i < BINS - 1; i++) {
+    if (ptr <= free_lists_starting_addr[node][0]) bin_index = 0;
+    else 
+   // {
+    for (size_t i = 0U; i < BINS - 1; i++) {
 	void *temp = free_lists_starting_addr[node][i + 1];
 	if (!temp) continue;
-
-	if (ptr <= temp) {	
+	if (ptr <= temp + (size_of_heap / BINS) - 0x1) {	
 	    bin_index = i + 1;
 	    break;
 	}
     }
-    printf("index %ld in node %d\n", bin_index, node);
+    printf("in deallocate the bin index is %ld and in node %d\n", bin_index, node);
     free_block *to_free = (free_block *) mem_alloc(sizeof(free_block));
     to_free->starting_addr = ptr;
 

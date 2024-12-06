@@ -29,7 +29,7 @@ typedef struct {
 void init_allocator(size_t heap_size);
 void free_allocator(void);
 
-void *allocate(size_t size, int node);
+void *allocate_localy(size_t size);
 void *allocate_interleaved(size_t size);
 
 void deallocate(void *ptr);
