@@ -8,7 +8,7 @@ all: numa_alloc
 
 
 util.o: 
-	$(CC) $(CFLAGS) -c util.c
+	$(CC) $(CFLAGS) $(DEFINES) -c util.c
 
 numa.o: numa.c
 	$(CC) $(CFLAGS) -c numa.c
