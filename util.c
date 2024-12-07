@@ -34,7 +34,7 @@ void print_allocation_info(void *ptr, size_t size) {
     }
 }
 
-void print_heap(int node) {
+void print_heap(numa_heap **numa_heaps, int node) {
     if ((size_t)node >= get_numa_nodes_num()) {
         fprintf(stderr, "Invalid NUMA node: %d\n", node);
         return;

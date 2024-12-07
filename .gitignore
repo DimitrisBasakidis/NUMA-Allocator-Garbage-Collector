@@ -5,4 +5,5 @@
 *.o
 *.so
 *.out
+*.swp
 .nfs*
