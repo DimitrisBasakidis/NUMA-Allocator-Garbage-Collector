@@ -4,7 +4,7 @@
 #include <stddef.h>
 #include <pthread.h>
 
-#define BINS 8
+#define BINS 12
 
 typedef enum {
     segregated_free_lists,

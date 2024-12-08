@@ -133,6 +133,7 @@ void initialize_free_lists(numa_heap **heap_addr, int node) {
 
 void init_allocator(size_t heap_size) {
     assert(heap_size > 0);
+    parse_cpus_to_node();
     size_t nodes =  get_numa_nodes_num();
     size_t size = nodes * sizeof(struct numa_heap *);
 
@@ -184,7 +185,7 @@ void *allocate_localy(size_t size) {
     pthread_mutex_lock(&heap->lock);
 
     size_t bin_index = get_bin_index(size);
-    printf("in allocate localy the bin ibdex is %ld and size %ld\n", bin_index, size);
+    //printf("in allocate localy the bin ibdex is %ld and size %ld\n", bin_index, size);
 
     if (bin_index == BINS) {
 	void *allocated = mem_alloc(size);
@@ -319,7 +320,7 @@ void deallocate(void *ptr) {
 	    break;
 	}
     }
-    printf("in deallocate the bin index is %ld and in node %d\n", bin_index, node);
+    //printf("in deallocate the bin index is %ld and in node %d\n", bin_index, node);
     free_block *to_free = (free_block *) mem_alloc(sizeof(free_block));
     to_free->starting_addr = ptr;
 
