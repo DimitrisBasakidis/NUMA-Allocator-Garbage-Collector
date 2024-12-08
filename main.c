@@ -3,7 +3,7 @@
 
 #include "allocator.h"
 
-#define NUM_ITERATIONS 10
+#define NUM_ITERATIONS 1
 #define MAX_THREADS 16
 
 // Timing utilities
@@ -107,7 +107,7 @@ void benchmark_numa_locality(size_t alloc_size) {
 // Main benchmarking function
 int main() {
     init_allocator(1024 * 1024 * 24);
-    size_t sizes[] = {64, 256, 1024, 4096, 16384}; // Different allocation sizes
+    size_t sizes[] = {64, 256, 1024, 4096, 16385}; // Different allocation sizes
     for (size_t i = 0; i < sizeof(sizes) / sizeof(sizes[0]); i++) {
         benchmark_latency(sizes[i]);
         benchmark_throughput(sizes[i], 4); // 4 threads

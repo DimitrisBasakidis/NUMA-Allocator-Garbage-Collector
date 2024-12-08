@@ -204,6 +204,7 @@ void *allocate_localy(size_t size) {
 	    else heap->free_list[bin_index] = (free_block *) ptr->next;
 
 	    mem_dealloc(ptr, ptr->size);
+            restore_thread_affinity();
             pthread_mutex_unlock(&heap->lock);
             return temp;
 	}
@@ -233,7 +234,6 @@ void *allocate_interleaved(size_t size) {
     pthread_mutex_lock(&heap->lock);
 
     size_t bin_index = get_bin_index(size);
-    printf("in allocate localy the bin ibdex is %ld and size %ld\n", bin_index, size);
 
     if (bin_index == BINS) {
 	void *allocated = mem_alloc(size);
@@ -252,6 +252,7 @@ void *allocate_interleaved(size_t size) {
 	    else heap->free_list[bin_index] = (free_block *) ptr->next;
 
 	    mem_dealloc(ptr, ptr->size);
+            restore_thread_affinity();
             pthread_mutex_unlock(&heap->lock);
             return temp;
 	}
