@@ -1,4 +1,3 @@
-# Variables
 CC = gcc
 CFLAGS = -Wall -Wextra -O2
 DEFINES = -D_GNU_SOURCE
