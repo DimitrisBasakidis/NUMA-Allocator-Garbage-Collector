@@ -7,3 +7,5 @@
 *.out
 *.swp
 .nfs*
+cpp_alloc
+numa_alloc

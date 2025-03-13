@@ -11,7 +11,7 @@ typedef enum {
     best_fit_within_a_bin,
 } allocation_policy;
 
-typedef struct {
+typedef struct free_block {
     void *starting_addr;
     size_t size;
     struct free_block *next;
