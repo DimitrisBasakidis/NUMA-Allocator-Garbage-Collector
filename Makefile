@@ -2,7 +2,6 @@ CC = gcc
 CFLAGS = -Wall -Wextra -O2
 DEFINES = -D_GNU_SOURCE
 
-# Targets
 all: numa_alloc cpp_alloc
 
 util.o: 
