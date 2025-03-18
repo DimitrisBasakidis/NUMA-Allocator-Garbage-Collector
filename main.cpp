@@ -1,27 +1,33 @@
 #include <iostream>
  
-#include "garbage-collector/cpp_allocator.h"
+#include "garbage-collector/cppAllocator.h"
 
-struct MyStruct {
-    int data[1000];
+// struct MyStruct {
+//     int data[10];
+// };
+
+struct MyObject : public Traceable {
+    int value;
+    MyObject *next;
 };
 
 int main() {
+  gcInit();
+    init_allocator(1024 * 1024);  // Initialize allocator
 
-    init_alloc(1024 * 1024 * 24); // 24 MB allocator initialization
-    // Allocate with global new (uses NUMA local allocation)
-    MyStruct* obj = new MyStruct;
-    
-    // Allocate an array
-    // MyStruct* arr = new MyStruct[10];
+    MyObject *obj1 = new MyObject();
+    MyObject *obj2 = new MyObject();
+    MyObject *obj3 = new MyObject();
+    MyObject *obj4 = new MyObject();
 
-    std::cout << "NUMA allocated object at: " << obj << std::endl;
-    // std::cout << "NUMA allocated array at: " << arr << std::endl;
-    //
-    // // Free memory
-    delete obj;
-    // delete[] arr;
-    free_allocator();
+    obj1->next = obj2;
+    obj2->next = obj3;
+    obj3->next = nullptr;
+
+    std::cout << "[TEST] Created 3 objects: " << obj1 << ", " << obj2 
+              << ", " << obj3 << "\n";
+
+    gc();  // Run garbage collection
+
     return 0;
 }
-

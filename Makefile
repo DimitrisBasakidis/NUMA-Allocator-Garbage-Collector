@@ -2,7 +2,7 @@ CC = gcc
 CFLAGS = -Wall -Wextra -O2
 DEFINES = -D_GNU_SOURCE
 
-all: numa_alloc cpp_alloc
+all: numa_alloc cppAlloc
 
 util.o: 
 	$(CC) $(CFLAGS) $(DEFINES) -c allocator/util.c
@@ -15,11 +15,12 @@ allocator.o: numa.o
 
 numa_alloc: allocator.o numa.o util.o
 	$(CC) $(DEFINES) $(CFLAGS) allocator/main.c allocator.o numa.o util.o -o numa_alloc -pthread -lm
-	g++ garbage-collector/cpp_allocator.cpp -c
+	g++ garbage-collector/cppAllocator.cpp -c
 
-cpp_alloc: numa_alloc
-	g++ main.cpp numa.o util.o allocator.o cpp_allocator.o -o cpp_alloc
+cppAlloc: numa_alloc
+	g++ main.cpp numa.o util.o allocator.o cppAllocator.o -o cppAlloc
 
 
 clean:
 	rm -f *.o numa_alloc
+	rm -f *.o cppAlloc
