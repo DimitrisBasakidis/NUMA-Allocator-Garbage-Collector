@@ -148,6 +148,11 @@ int main() {
         benchmark_access_time(sizes[i]);
     }
 
+    // for (int i = 0; i < 50000; i++) {
+    //   void *var = allocate_localy(40);
+    //   if (var == NULL) {printf("i is %d\n", i); break; }
+    // }
+
     free_allocator(); // Clean up
     return 0;
 }

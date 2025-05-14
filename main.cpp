@@ -2,32 +2,29 @@
  
 #include "garbage-collector/cppAllocator.h"
 
-// struct MyStruct {
-//     int data[10];
-// };
+extern std::unordered_map<Traceable *, ObjectHeader *> traceInfo;
+
+struct MyStruct : public Traceable {
+    int data[10];
+};
 
 struct MyObject : public Traceable {
     int value;
     MyObject *next;
 };
 
+
 int main() {
-  gcInit();
-    init_allocator(1024 * 1024);  // Initialize allocator
+    gcInit(1024 * 1024);
 
-    MyObject *obj1 = new MyObject();
-    MyObject *obj2 = new MyObject();
-    MyObject *obj3 = new MyObject();
-    MyObject *obj4 = new MyObject();
-
-    obj1->next = obj2;
-    obj2->next = obj3;
-    obj3->next = nullptr;
-
-    std::cout << "[TEST] Created 3 objects: " << obj1 << ", " << obj2 
-              << ", " << obj3 << "\n";
-
-    gc();  // Run garbage collection
-
+    for (int i = 0; i < 3; i++) {
+      MyObject* obj2 = new MyObject();  // Not a GC-tracked objet
+      obj2 = NULL;
+      MyStruct* obj3 = new MyStruct();  // Not a GC-tracked object
+      obj3 = NULL;
+    }
+  
+    gc();
+    gcFree();
     return 0;
 }

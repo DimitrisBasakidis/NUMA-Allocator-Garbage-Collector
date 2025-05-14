@@ -1,7 +1,7 @@
 #ifndef NUMA_ALLOCATOR_CPP_H
 #define NUMA_ALLOCATOR_CPP_H
 
-#include <new>  // For C++ memory allocation
+#include <new>
 #include <cstdlib>
 #include <cstdint>
 #include <unordered_map>
@@ -25,24 +25,58 @@ typedef struct ObjectHeader {
 
 struct Traceable;
 extern std::unordered_map<Traceable *, ObjectHeader *> traceInfo;
+extern size_t gc_threshold_bytes;
+extern size_t current_allocated_bytes;
+
+void gcInit(size_t heapSize);
+void gcFree();
+void gc();
 
 struct Traceable {
-    ObjectHeader *getHeader() { return traceInfo.at(this); }
-    static void *operator new(size_t size) {
+
+  ObjectHeader *getHeader() { return traceInfo.at(this); }
+  static void *operator new(size_t size) {
     void *object = allocate_localy(size);
+    if (!object) {
+      std::cerr << "[GC HANDLER] Allocation failed. Trying GC...\n";
+      gc();
+      object = allocate_localy(size);  // Try again after GC
+
+      if (!object) {
+        std::cerr << "NUMA Allocation failed after GC. Aborting.\n";
+        return NULL;
+        std::abort();
+      }
+    }
 
     if (!object) {
       std::cerr << "NUMA Allocation failed!\n";
+        std::abort();  // Or fallback to malloc to isolate the problem
     }
  
     auto header = new ObjectHeader{.marked = false, .size = size};
     traceInfo.insert(std::make_pair((Traceable *)object, header));
 
+    current_allocated_bytes += size;
+    if (current_allocated_bytes > gc_threshold_bytes) {
+      std::cout << "[GC HANDLER] invoking gc()" << std::endl;
+      current_allocated_bytes = 0;
+    }
+
     return object;
   }
-};
 
-void gcInit();
-void gc();
+ //  static void *operator numa_new(size_t size) {
+ //    void *object = allocate_interleaved(size);
+ //    if (!object) 
+ //      std::cerr << "NUMA Allocation failed!\n";
+ //    }
+ // 
+ //    auto header = new ObjectHeader{.marked = false, .size = size};
+ //    traceInfo.insert(std::make_pair((Traceable *)object, header));
+ //
+ //    return object;
+ //  }
+};
 
 #endif

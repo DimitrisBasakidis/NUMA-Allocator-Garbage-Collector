@@ -301,47 +301,45 @@ void free_allocator(void) {
 }
 
 void deallocate(void *ptr) {
-    assert(ptr != NULL);
+  assert(ptr != NULL);
 
-    int node = -1;
-    for (size_t i = 0; i < get_numa_nodes_num(); i++) {
-        if (ptr >= free_lists_starting_addr[i][0] && ptr < (free_lists_starting_addr[i][BINS - 1] + size_of_heap)) {
- 	    node = i;	
-	    break;
-	}
+  int node = -1;
+  for (size_t i = 0; i < get_numa_nodes_num(); i++) {
+    if (ptr >= free_lists_starting_addr[i][0] && ptr < (free_lists_starting_addr[i][BINS - 1] + size_of_heap)) {
+      node = i;	
+      break;
     }
+  }
 
-    if (node == -1) {
-	return;
-    }
-    numa_heap *heap = numa_heaps[node];
-    pthread_mutex_lock(&heap->lock);
+  if (node == -1) return;
 
-    size_t bin_index = -1;
-    if (ptr <= free_lists_starting_addr[node][0]) bin_index = 0;
-    else 
-   // {
-    for (size_t i = 0U; i < BINS - 1; i++) {
-	void *temp = free_lists_starting_addr[node][i + 1];
-	if (!temp) continue;
-	if (ptr <= temp + (size_of_heap / BINS) - 0x1) {	
+  numa_heap *heap = numa_heaps[node];
+  pthread_mutex_lock(&heap->lock);
+
+  size_t bin_index = -1;
+  if (ptr <= free_lists_starting_addr[node][0]) bin_index = 0;
+  else 
+  for (size_t i = 0U; i < BINS - 1; i++) {
+    void *temp = free_lists_starting_addr[node][i + 1];
+    if (!temp) continue;
+    if (ptr <= temp + (size_of_heap / BINS) - 0x1) {	
 	    bin_index = i + 1;
 	    break;
-	}
     }
-    //printf("in deallocate the bin index is %ld and in node %d\n", bin_index, node);
-    free_block *to_free = (free_block *) mem_alloc(sizeof(free_block));
-    to_free->starting_addr = ptr;
+  }
+  // printf("in deallocate the bin index is %ld and in node %d\n", bin_index, node);
+  free_block *to_free = (free_block *) mem_alloc(sizeof(free_block));
+  to_free->starting_addr = ptr;
 
-    to_free->size = 16 * pow(2, bin_index);
-    to_free->next = NULL;
+  to_free->size = 16 * pow(2, bin_index);
+  to_free->next = NULL;
 
-    if (heap->free_list[bin_index] == NULL) {
-        heap->free_list[bin_index] = to_free;
-    } else {
-	to_free->next = (struct free_block *) heap->free_list[bin_index];
-	heap->free_list[bin_index] = to_free;
-    }
+  if (heap->free_list[bin_index] == NULL) {
+    heap->free_list[bin_index] = to_free;
+  } else {
+    to_free->next = (struct free_block *) heap->free_list[bin_index];
+    heap->free_list[bin_index] = to_free;
+  }
 
-    pthread_mutex_unlock(&heap->lock);
+  pthread_mutex_unlock(&heap->lock);
 }
