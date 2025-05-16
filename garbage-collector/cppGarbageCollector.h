@@ -51,7 +51,7 @@ struct Traceable {
 
     if (!object) {
       std::cerr << "NUMA Allocation failed!\n";
-        std::abort();  // Or fallback to malloc to isolate the problem
+      std::abort();  // Or fallback to malloc to isolate the problem
     }
  
     auto header = new ObjectHeader{.marked = false, .size = size};
@@ -59,13 +59,46 @@ struct Traceable {
 
     current_allocated_bytes += size;
     if (current_allocated_bytes > gc_threshold_bytes) {
-      std::cout << "[GC HANDLER] invoking gc()" << std::endl;
+      #ifdef DEBUG
+        std::cout << "[GC HANDLER] invoking gc()" << std::endl;
+      #endif
       current_allocated_bytes = 0;
     }
 
     return object;
   }
 
+  static void *operator new[](size_t size) {
+    void *object = allocate_localy(size);
+    if (!object) {
+        std::cerr << "[GC HANDLER] Array allocation failed. Trying GC...\n";
+        gc();
+        object = allocate_localy(size);  // Try again after GC
+
+        if (!object) {
+            std::cerr << "NUMA Array allocation failed after GC. Aborting.\n";
+            std::abort();
+        }
+    }
+
+    if (!object) {
+        std::cerr << "NUMA Array allocation failed!\n";
+        std::abort();
+    }
+
+    auto header = new ObjectHeader{.marked = false, .size = size};
+    traceInfo.insert(std::make_pair((Traceable *)object, header));
+
+    current_allocated_bytes += size;
+    if (current_allocated_bytes > gc_threshold_bytes) {
+#ifdef DEBUG
+        std::cout << "[GC HANDLER] invoking gc() after array allocation" << std::endl;
+#endif
+        current_allocated_bytes = 0;
+    }
+
+    return object;
+}
  //  static void *operator numa_new(size_t size) {
  //    void *object = allocate_interleaved(size);
  //    if (!object) 

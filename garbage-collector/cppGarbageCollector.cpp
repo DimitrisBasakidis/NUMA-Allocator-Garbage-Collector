@@ -1,4 +1,4 @@
-#include "cppAllocator.h"
+#include "cppGarbageCollector.h"
 #include <csetjmp>
 #include <vector>
 
@@ -12,8 +12,10 @@ intptr_t *__stackBegin;
 
 void gcInit(size_t heapSize) {
   gc_threshold_bytes = heapSize * 0.75;
-  std::cout << "[GC INIT] gc_threshold_bytes is " << gc_threshold_bytes << std::endl;
-  init_allocator(heapSize);  // Initialize allocator
+  #ifdef DEBUG
+    std::cout << "[GC INIT] gc_threshold_bytes is " << gc_threshold_bytes << std::endl;
+  #endif
+  init_allocator(heapSize);
   __READ_RBP();
   __stackBegin = (intptr_t *)*__rbp;
 }
@@ -28,14 +30,18 @@ std::vector<Traceable *> getPointers(Traceable *object) {
   auto p = (uint8_t *)object;
   auto end = (p + object->getHeader()->size);
   std::vector<Traceable *> result;
-  std::cout << "[GC PTRS] Scanning Object at " << object 
-              << " (Size: " << object->getHeader()->size << ")\n";
+
+  #ifdef DEBUG
+  std::cout << "[GC PTRS] Scanning Object at " << object << " (Size: " << object->getHeader()->size << std::endl;
+  #endif
 
   while (p < end) {
     auto address = (Traceable *)*(uintptr_t *)p;
     if (traceInfo.count(address) != 0) {
-      std::cout << "[GC PTRS] Found Pointer: " << address 
-                      << " inside Object at " << object << "\n";
+      #ifdef DEBUG
+        std::cout << "[GC PTRS] Found Pointer: " << address << " inside Object at " << object << "\n";
+      #endif
+
       result.emplace_back(address);
     }
     p++;
@@ -61,8 +67,10 @@ void scanRegistersForRoots(std::vector<Traceable *> &roots) {
     for (void* ptr : regs) {
         auto address = (Traceable *)ptr;
         if (traceInfo.count(address) != 0) {
+          #ifdef DEBUG
             std::cout << "[GC ROOTS] Found Root in Register: " << address << "\n";
-            roots.emplace_back(address);
+          #endif
+          roots.emplace_back(address);
         }
     }
 }
@@ -87,8 +95,10 @@ std::vector<Traceable*> getRegisterRoots() {
     for (void* reg : regs) {
         auto ptr = reinterpret_cast<Traceable*>(reg);
         if (traceInfo.count(ptr)) {
-            std::cout << "[GC ROOTS] Found Register Root: " << ptr << "\n";
-            result.push_back(ptr);
+          #ifdef DEBUG
+            std::cout << "[GC ROOTS] Found Register Root: " << ptr << std::endl;
+          #endif
+          result.push_back(ptr);
         }
     }
     return result;
@@ -105,15 +115,16 @@ std::vector<Traceable *> getRoots() {
   auto rsp = (uint8_t *)__rsp;
   auto top = (uint8_t *)__stackBegin;
 
-  std::cout << "[GC ROOTS] Scanning stack from " 
-              << static_cast<void *>(rsp) << " to " 
-              << static_cast<void *>(top) << "\n";
-
+  #ifdef DEBUG
+    std::cout << "[GC ROOTS] Scanning stack from " << static_cast<void *>(rsp) << " to " << static_cast<void *>(top) << std::endl;
+  #endif
 
   while (rsp < top) {
     auto address = (Traceable *)*(uintptr_t *)rsp;
     if (traceInfo.count(address) != 0) {
-      std::cout << "[GC ROOTS] Found Root: " << address << "\n";
+      #ifdef DEBUG
+        std::cout << "[GC ROOTS] Found Root: " << address << "\n";
+      #endif
       result.emplace_back(address);
     }
     rsp++;
@@ -122,31 +133,48 @@ std::vector<Traceable *> getRoots() {
   auto regRoots = getRegisterRoots();
   result.insert(result.end(), regRoots.begin(), regRoots.end());
 
-  std::cout << "[GC ROOTS] Total Roots Found: " << result.size() << "\n";
+  #ifdef DEBUG
+    std::cout << "[GC ROOTS] Total Roots Found: " << result.size() << "\n";
+  #endif
+
   return result;
 }
 
 void mark() {
   auto worklist = getRoots();
-  std::cout << "[GC MARK] Found " << worklist.size() << " root objects.\n";
+
+  #ifdef DEBUG
+    std::cout << "[GC MARK] Found " << worklist.size() << " root objects.\n";
+  #endif
 
   while (!worklist.empty()) {
     auto o = worklist.back();
     worklist.pop_back();
     auto header = o->getHeader();
 
-     if (!header) {
-      std::cerr << "[GC ERROR] Object with no header found! Skipping...\n";
+    if (!header) {
+      #ifdef DEBUG
+        std::cerr << "[GC ERROR] Object with no header found! Skipping...\n";
+      #endif
+
       continue;
     }
-    std::cout << "[GC MARK] Checking Object at " << o << " | Marked: " << header->marked << "\n";
+
+    #ifdef DEBUG
+      std::cout << "[GC MARK] Checking Object at " << o << " | Marked: " << header->marked << "\n";
+    #endif
 
     if (!header->marked) {
       header->marked = true;
-      std::cout << "[GC MARK] Marked Object at " << o << "\n";
+      #ifdef DEBUG
+        std::cout << "[GC MARK] Marked Object at " << o << "\n";
+      #endif
 
       auto references = getPointers(o);
-      std::cout << "[GC MARK] Found " << references.size() << " references from Object at " << o << "\n";
+
+      #ifdef DEBUG
+        std::cout << "[GC MARK] Found " << references.size() << " references from Object at " << o << "\n";
+      #endif
 
       for (const auto &p : references) worklist.push_back(p);
     }
@@ -154,7 +182,11 @@ void mark() {
 }
 
 void sweep() {
-  std::cout << "[GC SWEEP] Starting garbage collection sweep...\n";
+
+  #ifdef DEBUG
+    std::cout << "[GC SWEEP] Starting garbage collection sweep...\n";
+  #endif
+
   size_t live_objects = 0, collected_objects = 0;
   auto it = traceInfo.cbegin();
 
@@ -165,22 +197,25 @@ void sweep() {
     if (it->second->marked) {
       it->second->marked = false;
       live_objects++;
-      std::cout << "[GC SWEEP] Object at " << ptr << " is still reachable.\n";
+      #ifdef DEBUG
+        std::cout << "[GC SWEEP] Object at " << ptr << " is still reachable.\n";
+      #endif
       ++it;
     } else {
-      std::cout << "[GC SWEEP] Collecting Object at " << ptr << "\n";
-      Traceable *ptr = it->first;  // Store before eiirasing
+      #ifdef DEBUG
+        std::cout << "[GC SWEEP] Collecting Object at " << ptr << "\n";
+      #endif
+      Traceable *ptr = it->first;
       ObjectHeader *ptr2 = it->second;
       delete ptr2;
-      it = traceInfo.erase(it);    // Remove from GC
-      std::cout << "[DEALLOCATING] ";
-      deallocate(ptr);  // Use NUMA-aware deallocation}
+      it = traceInfo.erase(it);
+      deallocate(ptr);
       collected_objects++;
     }
   }
-
- std::cout << "[GC SWEEP] Completed. Live Objects: " << live_objects
-              << ", Collected Objects: " << collected_objects << "\n";
+  #ifdef DEBUG
+    std::cout << "[GC SWEEP] Completed. Live Objects: " << live_objects << ", Collected Objects: " << collected_objects << "\n";
+  #endif
 }
 
 void gc() {
