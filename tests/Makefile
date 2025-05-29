@@ -29,3 +29,4 @@ clean:
 	rm -f *.o numa_alloc
 	rm -f *.o cppAlloc
 	rm -f *.o debugCppAlloc
+	rm -f eval_allocator eval_allocator_numa *.txt
