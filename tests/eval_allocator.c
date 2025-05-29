@@ -5,7 +5,11 @@
 
 #ifdef NUMA_ALLOC
 #include "../allocator/allocator.h"
-#define ALLOCATE(size) allocate_localy(size)
+#ifdef LOCAL
+  #define ALLOCATE(size) allocate_localy(size)
+#else
+  #define ALLOCATE(size) allocate_interleaved(size)
+#endif
 #define DEALLOCATE(ptr) deallocate(ptr)
 #else
 #define ALLOCATE(size) malloc(size)

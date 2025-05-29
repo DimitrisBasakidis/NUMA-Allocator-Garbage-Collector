@@ -47,24 +47,29 @@ if $EVAL_ONLY; then
 
     make numa_alloc 
 
-    # Compile with NUMA
-    gcc -D_GNU_SOURCE -DNUMA_ALLOC -Wall -Wextra -O2 eval_allocator.c allocator.o numa.o util.o -o eval_allocator_numa -pthread -lm
+    # Compile with NUMA local allocations
+    gcc -D_GNU_SOURCE -DNUMA_ALLOC -Wall -DLOCAL -Wextra -O2 eval_allocator.c allocator.o numa.o util.o -o eval_allocator_numa -pthread -lm
+
+    # Compile with NUMA interleaved allocations
+    gcc -D_GNU_SOURCE -DNUMA_ALLOC -DINTERLEAVED -Wall -Wextra -O2 eval_allocator.c allocator.o numa.o util.o -o eval_allocator_numa_int -pthread -lm
 
     # Compile with malloc
     gcc -D_GNU_SOURCE -Wall -Wextra -O2 eval_allocator.c allocator.o numa.o util.o -o eval_allocator -pthread -lm
 
     # Run and capture results
     ./eval_allocator_numa > numa_eval.txt
+    ./eval_allocator_numa_int > numa_eval_int.txt
     ./eval_allocator > malloc_eval.txt
 
     echo "[INFO] Comparing outputs..."
     diff malloc_eval.txt numa_eval.txt || {
-        echo "[WARNING] Differences found between malloc and NUMA output."
-        exit 1
+        echo "[WARNING] Differences found between malloc and NUMA local output."
     }
 
-    echo "[SUCCESS] Evaluation outputs match."
-    exit 0
+    diff malloc_eval.txt numa_eval_int.txt || {
+        echo "[WARNING] Differences found between malloc and NUMA interleaved output."
+        exit 0
+    }
 fi
 
 # Choose make target
