@@ -1,2 +1,0 @@
-[VERIFY] All blocks passed verification.
-[INTERLEAVED] Test completed in 1324.05 ms

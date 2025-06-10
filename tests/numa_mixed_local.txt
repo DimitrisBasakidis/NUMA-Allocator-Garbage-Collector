@@ -1,2 +1,0 @@
-[VERIFY] All blocks passed verification.
-[LOCAL] Test completed in 1337.94 ms
