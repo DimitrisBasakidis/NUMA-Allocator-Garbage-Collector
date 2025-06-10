@@ -92,7 +92,7 @@ int main() {
             DEALLOCATE(blocks[i].ptr);
             blocks[i].ptr = NULL;
             blocks[i].valid = 0;
-            printf("[FREE ] Block %d: freed\n", i);
+            // printf("[FREE ] Block %d: freed\n", i);
         }
     }
 

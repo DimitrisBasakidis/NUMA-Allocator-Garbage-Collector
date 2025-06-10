@@ -1,0 +1,2 @@
+[VERIFY] All blocks passed verification.
+[MALLOC] Test completed in 6.49 ms
