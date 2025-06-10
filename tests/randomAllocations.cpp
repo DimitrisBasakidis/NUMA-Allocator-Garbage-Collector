@@ -56,7 +56,7 @@ struct Size2048 : public Traceable {
 
 
 int main() {
-  gcInit(1024 * 1024 * 100);
+  gcInit(1024 * 1024 * 120);
   std::mt19937 rng(time(nullptr));  // Random number generator
   std::uniform_int_distribution<int> dist(0, 9);  // 10 struct types
 

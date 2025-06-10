@@ -29,4 +29,4 @@ clean:
 	rm -f *.o numa_alloc
 	rm -f *.o cppAlloc
 	rm -f *.o debugCppAlloc
-	rm -f eval_allocator eval_allocator_numa *.txt
+	rm -f eval_allocator eval_allocator_numa eval_allocator_numa_int eval_mixed eval_mixed_int eval_mixed_local vectors simple hash *.txt

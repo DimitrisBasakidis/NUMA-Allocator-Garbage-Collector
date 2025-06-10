@@ -56,19 +56,37 @@ if $EVAL_ONLY; then
     # Compile with malloc
     gcc -D_GNU_SOURCE -Wall -Wextra -O2 eval_allocator.c allocator.o numa.o util.o -o eval_allocator -pthread -lm
 
+    gcc -o eval_mixed eval_allocator_mixed.c allocator.o numa.o util.o -pthread -lm
+    gcc -DNUMA_ALLOC -DLOCAL -o eval_mixed_local eval_allocator_mixed.c allocator.o numa.o util.o -pthread -lm
+    gcc -DNUMA_ALLOC -DINTERLEAVED -o eval_mixed_int eval_allocator_mixed.c allocator.o numa.o util.o -pthread -lm
+
     # Run and capture results
     ./eval_allocator_numa > numa_eval.txt
     ./eval_allocator_numa_int > numa_eval_int.txt
     ./eval_allocator > malloc_eval.txt
 
-    echo "[INFO] Comparing outputs..."
+    ./eval_mixed > malloc_mixed.txt
+    ./eval_mixed_local > numa_mixed_local.txt
+    ./eval_mixed_int > numa_mixed_int.txt
+
+    echo "[INFO] Comparing outputs for heap allocations test..."
     diff malloc_eval.txt numa_eval.txt || {
-        echo "[WARNING] Differences found between malloc and NUMA local output."
+      echo "[DIFF] Differences found between malloc and NUMA local output."
     }
 
     diff malloc_eval.txt numa_eval_int.txt || {
-        echo "[WARNING] Differences found between malloc and NUMA interleaved output."
-        exit 0
+      echo "[DIFF] Differences found between malloc and NUMA interleaved output."
+    }
+
+    echo "[INFO] Comparing outputs for mixed allocations and deallocations test..."
+
+    diff malloc_mixed.txt numa_mixed_local.txt || {
+      echo "[DIFF] Differences found between malloc and NUMA local output."
+    }
+
+    diff malloc_mixed.txt numa_mixed_int.txt || {
+      echo "[DIFF] Differences found between malloc and NUMA interleaved output."
+      exit 0;
     }
 fi
 

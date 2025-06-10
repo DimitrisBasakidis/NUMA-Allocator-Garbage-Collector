@@ -26,7 +26,7 @@ int main() {
     int i, j;
 
 #ifdef NUMA_ALLOC
-    init_allocator(1024 * 1024 * 50);
+    init_allocator(1024 * 1024 * 56);
 #endif
 
     srand(8);
@@ -70,7 +70,17 @@ int main() {
 
     clock_t end = clock();
     double elapsed = (double)(end - start) / CLOCKS_PER_SEC * 1000;
-    printf("[DONE] Test completed in %.2f ms\n", elapsed);
+
+    #ifdef NUMA_ALLOC 
+    #ifdef LOCAL 
+      printf("[LOCAL] ");
+    #else
+      printf("[INTERLEAVED] ");
+    #endif
+    #else 
+      printf("[MALLOC] ");
+    #endif
+    printf("Test completed in %.2f ms\n", elapsed);
 
 #ifdef NUMA_ALLOC
     free_allocator();  // If needed by your allocator
