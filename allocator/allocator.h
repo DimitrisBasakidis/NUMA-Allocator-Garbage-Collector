@@ -17,10 +17,6 @@ typedef struct free_block {
     struct free_block *next;
 } free_block;
 
-typedef struct block_header {
-    size_t size;
-} block_header;
-
 typedef struct {
     void *start_addr;
     size_t heap_size;
