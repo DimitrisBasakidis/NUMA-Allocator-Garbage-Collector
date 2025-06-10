@@ -21,7 +21,7 @@
 #define DEALLOCATE(ptr) free(ptr)
 #endif
 
-#define NUM_ALLOCATIONS 5000
+#define NUM_ALLOCATIONS 10000
 const int ALLOC_SIZES[] = {16, 32, 64, 128, 256, 512, 1024, 2048};
 #define NUM_SIZES (sizeof(ALLOC_SIZES) / sizeof(ALLOC_SIZES[0]))
 
@@ -56,7 +56,7 @@ int main() {
     srand(4);
 
 #ifdef NUMA_ALLOC
-    init_allocator(1024 * 1024 * 56); 
+    init_allocator(1024 * 1024 * 200); 
 #endif
 
     clock_t start = clock();
@@ -82,7 +82,7 @@ int main() {
         blocks[i].pattern = pattern;
         blocks[i].valid = 1;
 
-        // printf("[ALLOC] Block %d: size=%d bytes, filled with 0x%02X\n", i, size, pattern);
+        printf("[ALLOC] Block %d: size=%d bytes, filled with 0x%02X\n", i, size, pattern);
     }
 
 
@@ -92,7 +92,7 @@ int main() {
             DEALLOCATE(blocks[i].ptr);
             blocks[i].ptr = NULL;
             blocks[i].valid = 0;
-            // printf("[FREE ] Block %d: freed\n", i);
+            printf("[FREE ] Block %d: freed\n", i);
         }
     }
 
@@ -120,7 +120,7 @@ int main() {
 
             memset(p, pattern, size);
 
-            // printf("[REALC] Block %d: size=%d bytes, filled with 0x%02X\n", i, size, pattern);
+            printf("[REALC] Block %d: size=%d bytes, filled with 0x%02X\n", i, size, pattern);
         }
     }
     // Phase 4: Verify memory contents
